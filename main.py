@@ -83,20 +83,23 @@ while True:
             pygame.quit()
             sys.exit()
 
-        if game_state == "start":
-            if event.type == pygame.MOUSEBUTTONDOWN:
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if game_state == "start":
                 if play_button.collidepoint(event.pos):
                     reset_game()
-        elif game_state == "playing":
+            elif game_state == "game_over":
+                if retry_button.collidepoint(event.pos):
+                    reset_game()
+            elif game_state == "clear":
+                if retry_button.collidepoint(event.pos):
+                    reset_game()
+
+        if game_state == "playing":
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     bullet_x = player_rect.x + (player_rect.width - 5) / 2
                     bullet_y = player_rect.y
                     bullets.append(pygame.Rect(bullet_x, bullet_y, 5, 15))
-        elif game_state == "game_over":
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if retry_button.collidepoint(event.pos):
-                    reset_game()
 
     # --- ゲームの状態に応じた処理 ---
     if game_state == "start":
@@ -113,7 +116,7 @@ while True:
         elapsed_time = (pygame.time.get_ticks() - start_time) / 1000
         remaining_time = 60 - elapsed_time
         if remaining_time <= 0:
-            game_state = "game_over"
+            game_state = "clear" # ゲームクリア！
 
         # --- キー入力 ---
         keys = pygame.key.get_pressed()
@@ -127,12 +130,18 @@ while True:
             player_rect.y += 5
 
         # --- 敵の生成と移動 ---
-        if random.randint(1, 100) < 2:
-            enemies.append(pygame.Rect(random.randint(0, SCREEN_WIDTH - 50), 0, 50, 50))
+        min_enemies = 5 if remaining_time <= 10 else 3
+        while len(enemies) < min_enemies:
+            enemy_rect = pygame.Rect(random.randint(0, SCREEN_WIDTH - 50), 0, 50, 50)
+            enemies.append({'rect': enemy_rect, 'speed_x': random.choice([-2, 2]), 'speed_y': 2})
+        
         for enemy in enemies:
-            enemy.y += 3
+            enemy['rect'].x += enemy['speed_x']
+            enemy['rect'].y += enemy['speed_y']
+            if enemy['rect'].left < 0 or enemy['rect'].right > SCREEN_WIDTH:
+                enemy['speed_x'] *= -1
             if random.randint(1, 200) < 2:
-                enemy_bullets.append(pygame.Rect(enemy.x + 22, enemy.y + 50, 5, 15))
+                enemy_bullets.append(pygame.Rect(enemy['rect'].x + 22, enemy['rect'].y + 50, 5, 15))
 
         # --- 弾の移動 ---
         for bullet in bullets:
@@ -142,18 +151,18 @@ while True:
 
         # --- オブジェクトの削除 ---
         bullets = [b for b in bullets if b.bottom > 0]
-        enemies = [e for e in enemies if e.top < SCREEN_HEIGHT]
+        enemies = [e for e in enemies if e['rect'].top < SCREEN_HEIGHT]
         enemy_bullets = [eb for eb in enemy_bullets if eb.top < SCREEN_HEIGHT]
 
         # --- 当たり判定 ---
-        for bullet in bullets:
-            for enemy in enemies:
-                if bullet.colliderect(enemy):
-                    bullets.remove(bullet)
+        for bullet in list(bullets):
+            for enemy in list(enemies):
+                if bullet.colliderect(enemy['rect']):
+                    if bullet in bullets: bullets.remove(bullet)
                     enemies.remove(enemy)
                     score += 10
         for enemy in enemies:
-            if player_rect.colliderect(enemy):
+            if player_rect.colliderect(enemy['rect']):
                 game_state = "game_over"
         for eb in enemy_bullets:
             if player_rect.colliderect(eb):
@@ -164,24 +173,19 @@ while True:
             screen.blit(background_image, (0, 0))
         else:
             screen.fill(BLACK)
-        
         if player_img:
             screen.blit(player_img, player_rect)
         else:
             pygame.draw.rect(screen, PLAYER_COLOR, player_rect)
-
         for bullet in bullets:
             pygame.draw.rect(screen, BULLET_COLOR, bullet)
-
         for enemy in enemies:
             if enemy_img:
-                screen.blit(enemy_img, enemy)
+                screen.blit(enemy_img, enemy['rect'])
             else:
-                pygame.draw.rect(screen, ENEMY_COLOR, enemy)
-
+                pygame.draw.rect(screen, ENEMY_COLOR, enemy['rect'])
         for eb in enemy_bullets:
             pygame.draw.rect(screen, ENEMY_BULLET_COLOR, eb)
-        
         score_text = font.render(f"Score: {score}", True, WHITE)
         screen.blit(score_text, (10, 10))
         time_text = font.render(f"Time: {int(remaining_time)}", True, WHITE)
@@ -195,6 +199,17 @@ while True:
         game_over_text = big_font.render("GAME OVER", True, WHITE)
         final_score_text = font.render(f"Final Score: {score}", True, WHITE)
         screen.blit(game_over_text, (SCREEN_WIDTH/2 - game_over_text.get_width()/2, SCREEN_HEIGHT/3))
+        screen.blit(final_score_text, (SCREEN_WIDTH/2 - final_score_text.get_width()/2, SCREEN_HEIGHT/2))
+        retry_button = draw_button("Retry", SCREEN_WIDTH/2 - 75, SCREEN_HEIGHT/2 + 70, 150, 50, BUTTON_COLOR, BUTTON_TEXT_COLOR)
+
+    elif game_state == "clear":
+        if background_image:
+            screen.blit(background_image, (0, 0))
+        else:
+            screen.fill(BLACK)
+        clear_text = big_font.render("CLEAR!", True, WHITE)
+        final_score_text = font.render(f"Final Score: {score}", True, WHITE)
+        screen.blit(clear_text, (SCREEN_WIDTH/2 - clear_text.get_width()/2, SCREEN_HEIGHT/3))
         screen.blit(final_score_text, (SCREEN_WIDTH/2 - final_score_text.get_width()/2, SCREEN_HEIGHT/2))
         retry_button = draw_button("Retry", SCREEN_WIDTH/2 - 75, SCREEN_HEIGHT/2 + 70, 150, 50, BUTTON_COLOR, BUTTON_TEXT_COLOR)
 
