@@ -15,4 +15,12 @@
 * 60秒間敵を倒しつつも生き残ればClear
 * 敵に当たったり、球を受けるとGameOver
 
-  ## ダウンロード方法
+## ダウンロード方法
+# プロジェクトクローン
+git clone https://github.com/username/project-name.git](https://github.com/koudaisano/shooting_game.git
+
+# プロジェクトディレクトリに移動
+cd project-name
+
+# ゲーム起動コマンド
+python main.py
